@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cotizador Karani</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --tq:#00A0B0; --tq-hondo:#00707B; --tq-claro:#DDF3F4;
+    --mg:#FF0080; --vd:#9ACD32; --ambar:#E5A400; --rojo:#D7263D;
+    --papel:#F6F2E6; --tinta:#1D2326; --gris:#646C70; --linea:#E2DCCB; --blanco:#FFFFFF;
+    --display:"Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+    --ui:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--papel);color:var(--tinta);font-family:var(--ui);font-size:16px;line-height:1.4}
+  button,input,select{font:inherit;color:inherit}
+  :focus-visible{outline:3px solid var(--mg);outline-offset:2px}
+
+  /* Barra superior */
+  .top{position:sticky;top:0;z-index:10;background:var(--tq);color:#fff;display:flex;align-items:center;gap:8px;padding:10px 16px}
+  .marca{flex:1;min-width:0}
+  .marca b{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.02em;display:block;line-height:1}
+  .marca span{font-size:13px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .tb{background:transparent;border:1.5px solid rgba(255,255,255,.55);color:#fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px;cursor:pointer;text-decoration:none;position:relative;white-space:nowrap}
+  .tb.lleno{background:#fff;color:var(--tq-hondo);border-color:#fff}
+  .badge{position:absolute;top:-7px;right:-7px;background:var(--mg);color:#fff;border-radius:999px;font-size:11px;font-weight:700;min-width:20px;height:20px;line-height:20px;text-align:center;padding:0 5px}
+
+  main{max-width:860px;margin:0 auto;padding:20px 16px 140px}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,8vw,48px);line-height:.95;margin:0 0 6px;letter-spacing:-.01em}
+  h2{font-family:var(--display);font-weight:800;font-size:22px;margin:0 0 10px}
+  .nota{color:var(--gris);font-size:14px;margin:0 0 18px;max-width:60ch}
+  .hero{width:100%;max-height:280px;object-fit:cover;border-radius:18px;margin:4px 0 16px;background:#fff}
+  .enlace{background:none;border:0;padding:0;color:var(--tq-hondo);font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+  /* Matriz talla × color */
+  .mx-marco{background:#fff;border-radius:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 0 0 1px var(--linea)}
+  table.mx{border-collapse:separate;border-spacing:0;width:100%}
+  .mx th,.mx td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--linea)}
+  .mx tr:last-child th,.mx tr:last-child td{border-bottom:0}
+  .mx thead th{font-weight:600;font-size:13px;color:var(--gris);vertical-align:bottom;min-width:84px}
+  .mx .sw{display:block;width:26px;height:26px;border-radius:50%;margin:0 auto 6px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+  .mx th.t{position:sticky;left:0;background:#fff;text-align:left;z-index:1;min-width:86px;padding-left:14px}
+  .mx th.t b{display:block;font-family:var(--display);font-weight:800;font-size:22px;line-height:1}
+  .mx th.t span{font-size:12px;color:var(--gris);font-weight:600}
+  .vacia{color:#CFC8B5}
+  .celda{display:inline-flex;flex-direction:column;align-items:center;gap:4px}
+  .celda small{font-size:11px;color:var(--gris);display:flex;align-items:center;gap:4px}
+
+  .qty{width:66px;height:46px;font-size:19px;font-weight:700;text-align:center;border:1.5px solid var(--linea);border-radius:12px;background:var(--papel);-moz-appearance:textfield;appearance:textfield}
+  .qty::-webkit-outer-spin-button,.qty::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .qty:focus{border-color:var(--tq);background:#fff;outline:none;box-shadow:0 0 0 3px var(--tq-claro)}
+  .qty.on{background:var(--tq);border-color:var(--tq);color:#fff}
+
+  .sem{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+  .s-DISPONIBLE{background:var(--vd)} .s-BAJO{background:var(--ambar)} .s-AGOTADO{background:var(--rojo)}
+  .leyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--gris);margin:12px 4px 0}
+  .leyenda span{display:inline-flex;align-items:center;gap:6px}
+
+  /* Captura simple */
+  .lista{background:#fff;border-radius:18px;box-shadow:0 0 0 1px var(--linea)}
+  .fila{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--linea)}
+  .fila:last-child{border-bottom:0}
+  .fila .info{flex:1;min-width:0}
+  .fila .info b{display:block;font-weight:600;font-size:15px}
+  .fila .info span{font-size:13px;color:var(--gris);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+  /* Buscar */
+  .buscador{width:100%;padding:15px 16px;font-size:17px;border-radius:14px;border:1.5px solid var(--linea);background:#fff;margin-bottom:14px}
+  .buscador:focus{outline:none;border-color:var(--tq);box-shadow:0 0 0 3px var(--tq-claro)}
+  .res{display:grid;gap:8px}
+  .res button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:0;border-radius:14px;padding:14px;cursor:pointer;box-shadow:0 0 0 1px var(--linea)}
+  .res button:hover{box-shadow:0 0 0 2px var(--tq)}
+  .res .ini{width:44px;height:44px;border-radius:12px;background:var(--tq-claro);color:var(--tq-hondo);font-family:var(--display);font-weight:800;display:grid;place-items:center;flex:none;font-size:18px;overflow:hidden}
+  .res .ini img{width:100%;height:100%;object-fit:cover}
+  .res b{display:block}
+  .res small{color:var(--gris)}
+
+  /* Carrito */
+  .grupo{background:#fff;border-radius:18px;box-shadow:0 0 0 1px var(--linea);margin-bottom:14px;overflow:hidden}
+  .grupo header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:14px 14px 6px}
+  .grupo header b{font-family:var(--display);font-weight:800;font-size:19px}
+  .linea{display:grid;grid-template-columns:1fr auto auto 32px;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--linea)}
+  .linea .d b{font-weight:700}
+  .linea .d small{display:flex;align-items:center;gap:6px;color:var(--gris);font-size:12px}
+  .linea .m{font-weight:700;min-width:84px;text-align:right;font-variant-numeric:tabular-nums}
+  .quitar{width:32px;height:32px;border-radius:50%;border:0;background:var(--papel);color:var(--gris);font-size:18px;cursor:pointer;line-height:1}
+  .totales{background:#fff;border-radius:18px;box-shadow:0 0 0 1px var(--linea);padding:6px 16px;margin-bottom:14px}
+  .totales div{display:flex;justify-content:space-between;padding:8px 0;font-variant-numeric:tabular-nums}
+  .totales .gran{border-top:2px solid var(--tq);font-family:var(--display);font-weight:800;font-size:24px;padding-top:10px}
+  .form{background:#fff;border-radius:18px;box-shadow:0 0 0 1px var(--linea);padding:16px}
+  .form label{display:block;font-weight:600;font-size:14px;margin:0 0 6px}
+  .form input,.form select{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid var(--linea);background:var(--papel);font-size:16px;margin-bottom:14px}
+  .form input:focus,.form select:focus{outline:none;border-color:var(--tq);background:#fff}
+  .asesor{padding:12px 14px;border-radius:12px;background:var(--tq-claro);margin-bottom:14px;font-size:15px}
+
+  /* Barra inferior */
+  .pie{position:fixed;left:0;right:0;bottom:0;z-index:9;background:#fff;box-shadow:0 -1px 0 var(--linea);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+  .pie .in{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .pie .tot{flex:1;font-size:13px;color:var(--gris);min-width:0}
+  .pie .tot b{display:block;color:var(--tinta);font-size:19px;font-variant-numeric:tabular-nums}
+  .btn{border:0;border-radius:14px;padding:14px 20px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+  .btn-p{background:var(--mg);color:#fff}
+  .btn-s{background:var(--tq-claro);color:var(--tq-hondo)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .ancho{width:100%}
+
+  /* Resultado */
+  .ok{background:#fff;border-radius:22px;box-shadow:0 0 0 1px var(--linea);padding:26px 20px;text-align:center}
+  .ok .folio{font-family:var(--display);font-weight:800;font-size:clamp(34px,10vw,56px);color:var(--tq-hondo);line-height:1;margin:8px 0}
+  .ok .acciones{display:grid;gap:10px;margin-top:20px}
+  .aviso{background:#FFF4D6;border-radius:12px;padding:12px 14px;font-size:14px;text-align:left;margin-top:14px}
+
+  .cargando{padding:60px 0;text-align:center;color:var(--gris)}
+  .cargando i{display:block;width:34px;height:34px;margin:0 auto 12px;border-radius:50%;border:3px solid var(--tq-claro);border-top-color:var(--tq);animation:g 0.9s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;z-index:20;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgba(0,0,0,.18)}
+  @media (max-width:560px){
+    .top{flex-wrap:wrap;row-gap:10px}
+    .marca{flex:1 1 100%}
+    .marca b{font-size:22px}
+    .tb{flex:1;text-align:center;padding:8px 10px}
+    .pie .btn{padding:13px 14px;font-size:15px}
+    .pie .tot{font-size:12px}
+    .pie .tot b{font-size:17px}
+  }
+  @media (prefers-reduced-motion: reduce){ .cargando i{animation:none} }
+</style>
+</head>
+<body>
+<div class="top" id="top"></div>
+<main id="app"><div class="cargando"><i></i>Cargando catálogo…</div></main>
+<div class="pie" id="pie" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// ============================================================
+// Dirección de la API (la URL /exec de tu implementación de Apps Script).
+// Si algún día creas una implementación NUEVA, cambia solo esta línea.
+var API = 'https://script.google.com/macros/s/AKfycbx0QGK-MCX2ghjIoHWT3cxSivc53Kzxlxvamd92_n5fk2YspGCRnQy0RlG3A163gshkbA/exec';
+// ============================================================
+
+var P = (function () {
+  var q = new URLSearchParams(location.search);
+  function limpia(s) { return String(s || '').toUpperCase().replace(/[<>\\]/g, '').trim().slice(0, 80); }
+  function codigo(s) { return limpia(s).replace(/[^A-Z0-9_-]/g, ''); }
+  return {
+    modelo: limpia(q.get('modelo')),
+    modelos: String(q.get('modelos') || '').split(',').map(limpia).filter(String).slice(0, 12),
+    v: codigo(q.get('v')),
+    cat: codigo(q.get('cat'))
+  };
+})();
+var S = { ini: null, modelo: null, cart: {}, vend: '', origen: 'CATALOGO', vista: 'cargando', cliente: { nombre: '', tel: '' }, res: null, enviando: false };
+
+// ---------- utilidades ----------
+var LS = {
+  get: function (k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function mx(n) { var s = (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).split('.'); return '$' + s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + s[1]; }
+function titulo(s) { return String(s || '').toLowerCase().replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); }); }
+function llamar(fn) {
+  var args = [].slice.call(arguments, 1);
+  var esGuardar = fn === 'guardarCotizacion';
+  var req = esGuardar
+    ? fetch(API, { method: 'POST', credentials: 'omit', redirect: 'follow',
+                   headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                   body: JSON.stringify({ fn: fn, args: args }) })
+    : fetch(API + '?api=' + encodeURIComponent(fn) + '&args=' + encodeURIComponent(JSON.stringify(args)),
+            { credentials: 'omit', redirect: 'follow' });
+  return req
+    .then(function (r) {
+      if (!r.ok) throw new Error('El servidor respondió ' + r.status + '. Intenta de nuevo en un momento.');
+      return r.json();
+    }, function () { throw new Error('Sin conexión con el servidor. Revisa tu internet e intenta de nuevo.'); })
+    .then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.error) || 'Respuesta inválida del servidor.');
+      return j.val;
+    });
+}
+var tTimer;
+function aviso(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(tTimer); tTimer = setTimeout(function () { t.hidden = true; }, 3200); }
+function guardarCarrito() { LS.set('kc_cart', S.cart); }
+
+var SEM_TXT = { DISPONIBLE: 'Disponible', BAJO: 'Pocas piezas', AGOTADO: 'Agotado, sobre pedido' };
+function sem(s) { return '<i class="sem s-' + esc(s) + '" title="' + esc(SEM_TXT[s] || '') + '"></i>'; }
+
+// Muestras de color para los encabezados de la matriz
+var MUESTRA = {
+  NEGRO: '#1E1E1E', CARBON: '#4B4F55', GRIS: '#9EA2A6', 'GRIS JASPE': '#B9BCBF', BLANCO: '#FFFFFF', HUESO: '#F1EBDD', CREMA: '#F3E7C9', BEIGE: '#D9C7A5', ARENA: '#CDB991',
+  CIELO: '#9ED3F0', TURQUESA: '#1FB9C1', AZUL: '#2D57A8', MARINO: '#1F2E55', REY: '#2346B8', INDIGO: '#3A3F8F',
+  VERDE: '#3B9A57', OLIVO: '#6E7444', MILITAR: '#55603F', MENTA: '#9FE0C3', JADE: '#00A37A',
+  ROJO: '#C8263A', VINO: '#6D1A2E', ROSA: '#F29CB8', FIUSHA: '#E5157A', FUCSIA: '#E5157A', MORADO: '#6B3FA0', LILA: '#B9A2DC',
+  AMARILLO: '#F2C230', MOSTAZA: '#C9971C', NARANJA: '#EE7A2B', CAFE: '#6B4A33', CHOCOLATE: '#4A2F22', TERRACOTA: '#B5532F'
+};
+function muestra(c) {
+  if (c === 'MULTICOLOR') return 'background:conic-gradient(#FF0080,#E5A400,#9ACD32,#00A0B0,#2D57A8,#FF0080)';
+  var h = MUESTRA[c];
+  return h ? 'background:' + h : 'background:repeating-linear-gradient(45deg,#E2DCCB 0 4px,#fff 4px 8px)';
+}
+
+// ---------- arranque ----------
+function iniciar() {
+  S.cart = LS.get('kc_cart') || {};
+  if (P.cat) { S.cat = P.cat; LS.set('kc_cat', P.cat); } else { S.cat = LS.get('kc_cat') || ''; }
+  llamar('getInicial', S.cat).then(function (ini) {
+    S.ini = ini;
+    var cods = ini.vendedores.map(function (v) { return v.codigo; });
+    if (P.v && cods.indexOf(P.v) >= 0) {
+      S.vend = P.v; S.origen = 'LINK_VENDEDOR';
+      LS.set('kc_vend', { v: P.v, o: 'LINK_VENDEDOR' });
+    } else {
+      var g = LS.get('kc_vend');
+      if (g && cods.indexOf(g.v) >= 0) { S.vend = g.v; S.origen = g.o || 'CATALOGO'; }
+    }
+    if (P.modelos && P.modelos.length > 1) ir('elegir');
+    else if (P.modelos && P.modelos.length === 1) abrirModelo(P.modelos[0]);
+    else if (P.modelo) abrirModelo(P.modelo); else ir('buscar');
+  }).catch(falla);
+}
+
+function falla(e) {
+  S.vista = 'error';
+  $('pie').hidden = true;
+  $('app').innerHTML = '<h1>No se pudo cargar</h1><p class="nota">' + esc(e && e.message || e) +
+    '</p><button class="btn btn-s" onclick="location.reload()">Volver a intentar</button>';
+}
+
+function abrirModelo(id) {
+  S.vista = 'cargando';
+  $('app').innerHTML = '<div class="cargando"><i></i>Cargando modelo…</div>';
+  $('pie').hidden = true;
+  llamar('getModelo', id).then(function (m) {
+    if (!m) { aviso('Ese modelo no está disponible. Búscalo por nombre.'); ir('buscar'); return; }
+    S.modelo = m;
+    // refresca precios del carrito para este modelo
+    m.skus.forEach(function (s) { if (S.cart[s.clave]) { S.cart[s.clave].precio = s.precio; S.cart[s.clave].sem = s.sem; } });
+    guardarCarrito();
+    ir('modelo');
+    window.scrollTo(0, 0);
+  }).catch(falla);
+}
+
+function ir(v) { S.vista = v; pintar(); }
+
+// ---------- pintar ----------
+function nombreVend() {
+  var v = (S.ini ? S.ini.vendedores : []).filter(function (x) { return x.codigo === S.vend; })[0];
+  return v ? v.nombre : '';
+}
+function piezasCarrito() { var n = 0; for (var k in S.cart) n += S.cart[k].cant; return n; }
+function subtotalCarrito() { var s = 0; for (var k in S.cart) s += S.cart[k].cant * S.cart[k].precio; return Math.round(s * 100) / 100; }
+
+function pintarTop() {
+  var n = piezasCarrito();
+  var nv = nombreVend();
+  var cat = S.ini && S.ini.catalogoUrl ? '<a class="tb" href="' + esc(S.ini.catalogoUrl) + '">Catálogo</a>' : '';
+  $('top').innerHTML =
+    '<div class="marca"><b>' + esc(S.ini ? S.ini.empresa : 'Karani') + '</b><span>' +
+      (nv ? 'Cotización con ' + esc(nv) : 'Cotizador de mayoreo') + '</span></div>' +
+    cat +
+    '<button class="tb" onclick="ir(\'buscar\')">Buscar</button>' +
+    '<button class="tb lleno" onclick="ir(\'carrito\')">Carrito' + (n ? '<span class="badge">' + n + '</span>' : '') + '</button>';
+}
+
+function pintar() {
+  pintarTop();
+  var app = $('app'), pie = $('pie');
+  pie.hidden = true;
+  if (S.vista === 'modelo') { app.innerHTML = vistaModelo(); pintarPieModelo(); }
+  else if (S.vista === 'elegir') { app.innerHTML = vistaElegir(); }
+  else if (S.vista === 'buscar') { app.innerHTML = vistaBuscar(); var b = $('q'); if (b) { b.focus(); filtrar(b.value); } }
+  else if (S.vista === 'carrito') { app.innerHTML = vistaCarrito(); pintarPieCarrito(); }
+  else if (S.vista === 'listo') { app.innerHTML = vistaListo(); }
+}
+
+function input(s) {
+  var q = S.cart[s.clave] ? S.cart[s.clave].cant : '';
+  return '<input class="qty' + (q ? ' on' : '') + '" type="number" inputmode="numeric" min="0" step="1" placeholder="0" ' +
+    'aria-label="Piezas ' + esc(s.desc) + '" data-k="' + esc(s.clave) + '" value="' + q + '" oninput="cambiaPiezas(this)">';
+}
+
+function vistaModelo() {
+  var m = S.modelo;
+  var h = '<h1>' + esc(titulo(m.nombre)) + '</h1>' +
+    '<p class="nota">Precio de mayoreo por pieza, sin IVA. Escribe cuántas piezas quieres; se guardan solas en tu carrito.</p>';
+  if (m.img) h += '<img class="hero" src="' + esc(m.img) + '" alt="' + esc(m.nombre) + '">';
+  var idx = {};
+  m.skus.forEach(function (s) { idx[s.talla + '|' + s.color] = s; });
+
+  if (m.captura === 'MATRIZ') {
+    h += '<div class="mx-marco"><table class="mx"><thead><tr><th class="t">Talla</th>';
+    m.colores.forEach(function (c) { h += '<th><span class="sw" style="' + muestra(c) + '"></span>' + esc(titulo(c)) + '</th>'; });
+    h += '</tr></thead><tbody>';
+    m.tallas.forEach(function (t) {
+      var fila = m.colores.map(function (c) { return idx[t + '|' + c]; }).filter(Boolean);
+      var precios = fila.map(function (s) { return s.precio; }).filter(function (p, i, a) { return a.indexOf(p) === i; });
+      var unico = precios.length === 1;
+      h += '<tr><th class="t" scope="row"><b>' + esc(t) + '</b><span>' + (unico ? mx(precios[0]) : 'Varía por color') + '</span></th>';
+      m.colores.forEach(function (c) {
+        var s = idx[t + '|' + c];
+        h += s ? '<td><div class="celda">' + input(s) + '<small>' + sem(s.sem) + (unico ? '' : mx(s.precio)) + '</small></div></td>'
+               : '<td class="vacia" aria-label="No existe">—</td>';
+      });
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+  } else {
+    h += '<div class="lista">';
+    m.skus.slice().sort(function (a, b) { return a.desc.localeCompare(b.desc); }).forEach(function (s) {
+      h += '<div class="fila"><div class="info"><b>' + esc(titulo(s.desc)) + '</b><span>' + sem(s.sem) + esc(titulo(s.color)) +
+        (s.talla && s.talla !== 'UNI' ? ', talla ' + esc(s.talla) : '') + ', ' + mx(s.precio) + '</span></div>' + input(s) + '</div>';
+    });
+    h += '</div>';
+  }
+  h += '<div class="leyenda"><span>' + sem('DISPONIBLE') + 'Disponible</span><span>' + sem('BAJO') + 'Pocas piezas</span><span>' +
+       sem('AGOTADO') + 'Agotado, se surte sobre pedido</span></div>';
+  return h;
+}
+
+function cambiaPiezas(el) {
+  var k = el.getAttribute('data-k');
+  var n = Math.max(0, Math.min(99999, parseInt(el.value, 10) || 0));
+  if (String(n) !== el.value && el.value !== '') el.value = n || '';
+  var s = S.modelo ? S.modelo.skus.filter(function (x) { return x.clave === k; })[0] : null;
+  if (n > 0) {
+    var base = S.cart[k] || (s ? { clave: s.clave, desc: s.desc, talla: s.talla, orden: s.orden, color: s.color,
+      precio: s.precio, sem: s.sem, modelo: S.modelo.id, modeloNombre: S.modelo.nombre } : null);
+    if (base) { base.cant = n; S.cart[k] = base; }
+  } else {
+    delete S.cart[k];
+  }
+  el.classList.toggle('on', n > 0);
+  guardarCarrito();
+  pintarTop();
+  if (S.vista === 'modelo') pintarPieModelo();
+  if (S.vista === 'carrito') { var y = window.scrollY; if (n === 0) { $('app').innerHTML = vistaCarrito(); window.scrollTo(0, y); } else actualizarTotales(); pintarPieCarrito(); }
+}
+
+function pintarPieModelo() {
+  var m = S.modelo, pz = 0, sub = 0;
+  m.skus.forEach(function (s) { var c = S.cart[s.clave]; if (c) { pz += c.cant; sub += c.cant * c.precio; } });
+  var pie = $('pie');
+  pie.hidden = false;
+  pie.innerHTML = '<div class="in"><div class="tot">' + (pz ? 'Este modelo: ' + pz + ' pzs' : 'Aún no capturas piezas de este modelo') +
+    '<b>' + mx(sub) + '</b></div>' +
+    '<button class="btn btn-s" onclick="ir(\'buscar\')">Otro modelo</button>' +
+    '<button class="btn btn-p" onclick="ir(\'carrito\')"' + (piezasCarrito() ? '' : ' disabled') + '>Ver carrito</button></div>';
+}
+
+// ---------- elegir (una foto de Canva con varios modelos) ----------
+function botonModelo(m) {
+  var ini = m.img ? '<img src="' + esc(m.img) + '" alt="">' : esc(titulo(m.nombre).charAt(0));
+  return '<button data-m="' + esc(m.id) + '" onclick="abrirModelo(this.dataset.m)"><span class="ini">' + ini + '</span><span><b>' +
+    esc(titulo(m.nombre)) + '</b><small>' + esc(titulo(m.tipo)) + (m.captura === 'MATRIZ' ? ', por talla y color' : '') + '</small></span></button>';
+}
+function vistaElegir() {
+  var lista = S.ini.modelos.filter(function (m) { return P.modelos.indexOf(m.id) >= 0; });
+  if (!lista.length) { S.vista = 'buscar'; setTimeout(function () { filtrar(''); }, 0); return vistaBuscar(); }
+  return '<h1>¿Cuál modelo quieres cotizar?</h1><p class="nota">Esta foto del catálogo tiene más de un modelo. Elige uno; después puedes volver por el otro.</p>' +
+    '<div class="res">' + lista.map(botonModelo).join('') + '</div>' +
+    '<p class="nota" style="margin-top:16px"><button class="enlace" onclick="ir(\'buscar\')">Buscar otro modelo</button></p>';
+}
+
+// ---------- buscar ----------
+function vistaBuscar() {
+  return '<h1>Buscar modelo</h1><p class="nota">Escribe el nombre del diseño o el departamento, por ejemplo “sicaru dama”.</p>' +
+    '<input id="q" class="buscador" type="search" placeholder="Nombre del modelo" autocomplete="off" oninput="filtrar(this.value)">' +
+    '<div class="res" id="res"></div>';
+}
+function filtrar(q) {
+  var ws = String(q || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().split(/\s+/).filter(String);
+  var lista = S.ini.modelos.filter(function (m) {
+    var t = (m.nombre + ' ' + m.id + ' ' + m.tipo).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    return ws.every(function (w) { return t.indexOf(w) >= 0; });
+  });
+  var tot = lista.length;
+  lista = lista.slice(0, 60);
+  var h = lista.map(function (m) {
+    return botonModelo(m);
+  }).join('');
+  if (!tot) h = '<p class="nota">No hay modelos con “' + esc(q) + '”. Prueba con menos palabras.</p>';
+  else if (tot > 60) h += '<p class="nota">Mostrando 60 de ' + tot + '. Escribe más para afinar.</p>';
+  $('res').innerHTML = h;
+}
+
+// ---------- carrito ----------
+function vistaCarrito() {
+  var items = Object.keys(S.cart).map(function (k) { return S.cart[k]; });
+  if (!items.length) {
+    return '<h1>Tu carrito está vacío</h1><p class="nota">Abre un modelo desde el catálogo o búscalo aquí, y captura las piezas que necesitas.</p>' +
+      '<button class="btn btn-p" onclick="ir(\'buscar\')">Buscar modelo</button>';
+  }
+  var grupos = {};
+  items.forEach(function (i) { (grupos[i.modeloNombre] = grupos[i.modeloNombre] || []).push(i); });
+  var h = '<h1>Tu cotización</h1><p class="nota">Revisa las piezas. Los precios son de mayoreo por pieza; el IVA se suma al final.</p>';
+  Object.keys(grupos).sort().forEach(function (g) {
+    var ls = grupos[g].sort(function (a, b) { return a.color.localeCompare(b.color) || a.orden - b.orden; });
+    var mid = ls[0].modelo;
+    h += '<section class="grupo"><header><b>' + esc(titulo(g)) + '</b><button class="enlace" data-m="' + esc(mid) + '" onclick="abrirModelo(this.dataset.m)">Editar</button></header>';
+    ls.forEach(function (i) {
+      h += '<div class="linea"><div class="d"><b>' + esc(i.talla === 'UNI' ? titulo(i.desc) : 'Talla ' + i.talla) + '</b><small>' + sem(i.sem) +
+        esc(titulo(i.color)) + ', ' + mx(i.precio) + ' c/u</small></div>' +
+        input(i) + '<span class="m" id="m_' + esc(i.clave) + '">' + mx(i.cant * i.precio) + '</span>' +
+        '<button class="quitar" aria-label="Quitar" onclick="quitar(\'' + esc(i.clave) + '\')">×</button></div>';
+    });
+    h += '</section>';
+  });
+  h += '<div class="totales" id="totales">' + htmlTotales() + '</div>';
+
+  var vend = S.ini.vendedores;
+  var asesor;
+  if (S.origen === 'LINK_VENDEDOR' && S.vend) {
+    asesor = '<div class="asesor">Te atiende <b>' + esc(nombreVend()) + '</b></div>';
+  } else {
+    asesor = '<label for="v">¿Quién te atiende?</label><select id="v" onchange="elegirVend(this.value)">' +
+      '<option value="">Sin asesor asignado</option>' +
+      vend.map(function (v) { return '<option value="' + esc(v.codigo) + '"' + (v.codigo === S.vend ? ' selected' : '') + '>' + esc(v.nombre) + '</option>'; }).join('') +
+      '</select>';
+  }
+  h += '<div class="form"><h2>Datos para la cotización</h2>' +
+    '<label for="cn">Nombre del cliente o negocio</label><input id="cn" autocomplete="name" value="' + esc(S.cliente.nombre) + '" oninput="S.cliente.nombre=this.value">' +
+    '<label for="ct">Teléfono (10 dígitos)</label><input id="ct" type="tel" inputmode="tel" autocomplete="tel" value="' + esc(S.cliente.tel) + '" oninput="S.cliente.tel=this.value">' +
+    asesor + '</div>';
+  return h;
+}
+function htmlTotales() {
+  var sub = subtotalCarrito(), tasa = S.ini.iva, iva = Math.round(sub * tasa * 100) / 100;
+  return '<div><span>Piezas</span><span>' + piezasCarrito() + '</span></div>' +
+    '<div><span>Subtotal</span><span>' + mx(sub) + '</span></div>' +
+    '<div><span>IVA ' + Math.round(tasa * 100) + '%</span><span>' + mx(iva) + '</span></div>' +
+    '<div class="gran"><span>Total</span><span>' + mx(sub + iva) + '</span></div>';
+}
+function actualizarTotales() {
+  for (var k in S.cart) { var e = $('m_' + k); if (e) e.textContent = mx(S.cart[k].cant * S.cart[k].precio); }
+  var t = $('totales'); if (t) t.innerHTML = htmlTotales();
+}
+function quitar(k) { delete S.cart[k]; guardarCarrito(); pintar(); }
+function elegirVend(v) { S.vend = v; S.origen = 'CATALOGO'; LS.set('kc_vend', { v: v, o: 'CATALOGO' }); pintarTop(); }
+
+function pintarPieCarrito() {
+  var pie = $('pie');
+  if (!piezasCarrito()) { pie.hidden = true; return; }
+  var sub = subtotalCarrito(), total = sub + Math.round(sub * S.ini.iva * 100) / 100;
+  pie.hidden = false;
+  pie.innerHTML = '<div class="in"><div class="tot">Total con IVA<b>' + mx(total) + '</b></div>' +
+    '<button class="btn btn-p" id="gen" onclick="generar()"' + (S.enviando ? ' disabled' : '') + '>' +
+    (S.enviando ? 'Generando…' : 'Generar cotización') + '</button></div>';
+}
+
+function generar() {
+  var nom = S.cliente.nombre.trim(), tel = S.cliente.tel.replace(/\D/g, '');
+  if (!nom) { aviso('Escribe el nombre del cliente.'); $('cn').focus(); return; }
+  if (tel.length < 10) { aviso('El teléfono debe tener 10 dígitos.'); $('ct').focus(); return; }
+  S.enviando = true; pintarPieCarrito();
+  var items = Object.keys(S.cart).map(function (k) { return { clave: k, cant: S.cart[k].cant }; });
+  llamar('guardarCotizacion', { v: S.vend, origen: S.origen, cat: S.cat, cliente: { nombre: nom, tel: S.cliente.tel }, items: items })
+    .then(function (r) {
+      S.enviando = false; S.res = r; S.cart = {}; guardarCarrito(); $('toast').hidden = true;
+      S.cliente = { nombre: '', tel: '' };
+      ir('listo'); window.scrollTo(0, 0);
+    })
+    .catch(function (e) { S.enviando = false; pintarPieCarrito(); aviso(e && e.message ? e.message : 'No se pudo generar la cotización.'); });
+}
+
+// ---------- resultado ----------
+function vistaListo() {
+  var r = S.res;
+  var h = '<div class="ok"><p class="nota" style="margin:0 auto">Cotización generada</p><div class="folio">' + esc(r.folio) + '</div>' +
+    '<p style="margin:0">' + r.piezas + ' piezas, total con IVA <b>' + mx(r.total) + '</b></p><div class="acciones">';
+  if (r.url) h += '<a class="btn btn-p" href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir PDF</a>';
+  h += '<button class="btn btn-s" onclick="ir(\'buscar\')">Nueva cotización</button></div>';
+  if (r.pdfError) h += '<div class="aviso">La cotización quedó registrada con el folio ' + esc(r.folio) + ', pero el PDF no se pudo crear: ' + esc(r.pdfError) + '</div>';
+  return h + '</div>';
+}
+
+iniciar();
+</script>
+</body>
+</html>
