@@ -74,7 +74,8 @@
   .buscador:focus{outline:none;border-color:var(--tq);box-shadow:0 0 0 3px var(--tq-claro)}
   .res{display:grid;gap:8px}
   .res button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:0;border-radius:14px;padding:14px;cursor:pointer;box-shadow:0 0 0 1px var(--linea)}
-  .res button:hover{box-shadow:0 0 0 2px var(--tq)}
+  .res button:hover,.res a.cat-op:hover{box-shadow:0 0 0 2px var(--tq)}
+  .res a.cat-op{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:14px;box-shadow:0 0 0 1px var(--linea);color:inherit;text-decoration:none}
   .res .ini{width:44px;height:44px;border-radius:12px;background:var(--tq-claro);color:var(--tq-hondo);font-family:var(--display);font-weight:800;display:grid;place-items:center;flex:none;font-size:18px;overflow:hidden}
   .res .ini img{width:100%;height:100%;object-fit:cover}
   .res b{display:block}
@@ -261,7 +262,11 @@ function subtotalCarrito() { var s = 0; for (var k in S.cart) s += S.cart[k].can
 function pintarTop() {
   var n = piezasCarrito();
   var nv = nombreVend();
-  var cat = S.ini && S.ini.catalogoUrl ? '<a class="tb" href="' + esc(S.ini.catalogoUrl) + '">Catálogo</a>' : '';
+  var cats = (S.ini && S.ini.catalogos) || [];
+  var cat = '';
+  if (S.ini && S.ini.catalogoUrl && (S.cat || cats.length <= 1)) cat = '<a class="tb" href="' + esc(S.ini.catalogoUrl) + '">Catálogo</a>';
+  else if (cats.length === 1) cat = '<a class="tb" href="' + esc(cats[0].url) + '">Catálogo</a>';
+  else if (cats.length > 1) cat = '<button class="tb" onclick="ir(\'catalogos\')">Catálogos</button>';
   $('top').innerHTML =
     '<div class="marca"><b>' + esc(S.ini ? S.ini.empresa : 'Karani') + '</b><span>' +
       (nv ? 'Cotización con ' + esc(nv) : 'Cotizador de mayoreo') + '</span></div>' +
@@ -276,6 +281,7 @@ function pintar() {
   pie.hidden = true;
   if (S.vista === 'modelo') { app.innerHTML = vistaModelo(); pintarPieModelo(); }
   else if (S.vista === 'elegir') { app.innerHTML = vistaElegir(); }
+  else if (S.vista === 'catalogos') { app.innerHTML = vistaCatalogos(); }
   else if (S.vista === 'buscar') { app.innerHTML = vistaBuscar(); var b = $('q'); if (b) { b.focus(); filtrar(b.value); } }
   else if (S.vista === 'carrito') { app.innerHTML = vistaCarrito(); pintarPieCarrito(); }
   else if (S.vista === 'listo') { app.innerHTML = vistaListo(); }
@@ -367,6 +373,16 @@ function vistaElegir() {
   return '<h1>¿Cuál modelo quieres cotizar?</h1><p class="nota">Esta foto del catálogo tiene más de un modelo. Elige uno; después puedes volver por el otro.</p>' +
     '<div class="res">' + lista.map(botonModelo).join('') + '</div>' +
     '<p class="nota" style="margin-top:16px"><button class="enlace" onclick="ir(\'buscar\')">Buscar otro modelo</button></p>';
+}
+
+// ---------- volver a un catálogo ----------
+function vistaCatalogos() {
+  var cats = (S.ini && S.ini.catalogos) || [];
+  return '<h1>Regresar al catálogo</h1><p class="nota">Elige el catálogo para seguir viendo fotos. Tu carrito se conserva.</p>' +
+    '<div class="res">' + cats.map(function (c) {
+      return '<a class="cat-op" href="' + esc(c.url) + '"><span class="ini">' + esc(c.nombre.charAt(0).toUpperCase()) +
+        '</span><span><b>' + esc(c.nombre) + '</b></span></a>';
+    }).join('') + '</div>';
 }
 
 // ---------- buscar ----------
