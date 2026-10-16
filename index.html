@@ -264,8 +264,8 @@ function pintarTop() {
   var nv = nombreVend();
   var cats = (S.ini && S.ini.catalogos) || [];
   var cat = '';
-  if (S.ini && S.ini.catalogoUrl && (S.cat || cats.length <= 1)) cat = '<a class="tb" href="' + esc(S.ini.catalogoUrl) + '">Catálogo</a>';
-  else if (cats.length === 1) cat = '<a class="tb" href="' + esc(cats[0].url) + '">Catálogo</a>';
+  var urlCat = (S.ini && S.ini.catalogoUrl && (S.cat || cats.length <= 1)) ? S.ini.catalogoUrl : (cats.length === 1 ? cats[0].url : '');
+  if (urlCat) cat = '<button class="tb" data-u="' + esc(urlCat) + '" onclick="volverCatalogo(this.dataset.u)">Catálogo</button>';
   else if (cats.length > 1) cat = '<button class="tb" onclick="ir(\'catalogos\')">Catálogos</button>';
   $('top').innerHTML =
     '<div class="marca"><b>' + esc(S.ini ? S.ini.empresa : 'Karani') + '</b><span>' +
@@ -376,6 +376,15 @@ function vistaElegir() {
 }
 
 // ---------- volver a un catálogo ----------
+// Canva abre cada foto en una pestaña nueva. Para no acumular pestañas, "Catálogo" cierra esta
+// pestaña y el cliente queda en la del catálogo, en la página donde iba. El carrito ya está guardado.
+// Si el navegador no deja cerrarla (p. ej. se abrió el link escribiéndolo), abre el catálogo aquí mismo.
+function volverCatalogo(url) {
+  guardarCarrito();
+  try { window.close(); } catch (e) {}
+  setTimeout(function () { if (!window.closed) location.href = url; }, 400);
+}
+
 function vistaCatalogos() {
   var cats = (S.ini && S.ini.catalogos) || [];
   return '<h1>Regresar al catálogo</h1><p class="nota">Elige el catálogo para seguir viendo fotos. Tu carrito se conserva.</p>' +
@@ -496,6 +505,13 @@ function vistaListo() {
   if (r.pdfError) h += '<div class="aviso">La cotización quedó registrada con el folio ' + esc(r.folio) + ', pero el PDF no se pudo crear: ' + esc(r.pdfError) + '</div>';
   return h + '</div>';
 }
+
+// Si el carrito cambia en otra pestaña del cotizador, esta se actualiza sola.
+window.addEventListener('storage', function (e) {
+  if (e.key !== 'kc_cart' || !S.ini) return;
+  S.cart = LS.get('kc_cart') || {};
+  if (S.vista === 'modelo' || S.vista === 'carrito') pintar(); else pintarTop();
+});
 
 iniciar();
 </script>
