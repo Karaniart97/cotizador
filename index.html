@@ -97,6 +97,8 @@
   .form label{display:block;font-weight:600;font-size:14px;margin:0 0 6px}
   .form input,.form select{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid var(--linea);background:var(--papel);font-size:16px;margin-bottom:14px}
   .form input:focus,.form select:focus{outline:none;border-color:var(--tq);background:#fff}
+  .op-est{display:flex;align-items:center;gap:10px;padding:13px 14px;border:1.5px solid var(--linea);border-radius:12px;margin-bottom:10px;font-weight:600;cursor:pointer;background:var(--papel)}
+  .op-est input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--tq)}
   .asesor{padding:12px 14px;border-radius:12px;background:var(--tq-claro);margin-bottom:14px;font-size:15px}
 
   /* Barra inferior */
@@ -153,7 +155,11 @@ var P = (function () {
     modelo: limpia(q.get('modelo')),
     modelos: String(q.get('modelos') || '').split(',').map(limpia).filter(String).slice(0, 12),
     v: codigo(q.get('v')),
-    cat: codigo(q.get('cat'))
+    cat: codigo(q.get('cat')),
+    accion: codigo(q.get('accion')),
+    folio: codigo(q.get('folio')),
+    e: limpia(q.get('e')),
+    t: String(q.get('t') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40)
   };
 })();
 var S = { ini: null, modelo: null, cart: {}, vend: '', origen: 'CATALOGO', vista: 'cargando', cliente: { nombre: '', tel: '' }, res: null, enviando: false };
@@ -169,7 +175,7 @@ function mx(n) { var s = (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).s
 function titulo(s) { return String(s || '').toLowerCase().replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); }); }
 function llamar(fn) {
   var args = [].slice.call(arguments, 1);
-  var esGuardar = fn === 'guardarCotizacion';
+  var esGuardar = fn === 'guardarCotizacion' || fn === 'cambiarEstatus';
   var req = esGuardar
     ? fetch(API, { method: 'POST', credentials: 'omit', redirect: 'follow',
                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -208,7 +214,41 @@ function muestra(c) {
 }
 
 // ---------- arranque ----------
+// ---------- actualizar estatus (botones del correo del vendedor) ----------
+var EST_TXT = { 'EN SEGUIMIENTO': 'En seguimiento', 'CONVERTIDA': 'Convertida (venta)', 'PERDIDA': 'Perdida' };
+var MOTIVOS = ['Precio', 'Tiempo de entrega', 'Sin existencia', 'Compró en otro lado', 'Sin respuesta del cliente', 'Otro'];
+function iniciarEstatus() {
+  $('top').innerHTML = '<div class="marca"><b>Karani Art</b><span>Seguimiento de cotización</span></div>';
+  S.est = EST_TXT[P.e] ? P.e : 'EN SEGUIMIENTO';
+  pintarEstatus();
+}
+function pintarEstatus(msg) {
+  var ops = Object.keys(EST_TXT).map(function (k) {
+    return '<label class="op-est"><input type="radio" name="est" value="' + k + '"' + (k === S.est ? ' checked' : '') +
+      ' onchange="S.est=this.value;pintarEstatus()"> <span>' + EST_TXT[k] + '</span></label>';
+  }).join('');
+  var mot = S.est === 'PERDIDA'
+    ? '<label for="mot">¿Por qué se perdió?</label><select id="mot"><option value="">Elige un motivo</option>' +
+      MOTIVOS.map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('') + '</select>'
+    : '';
+  $('app').innerHTML = '<h1>Folio ' + esc(P.folio) + '</h1><p class="nota">Marca cómo va esta cotización. Puedes cambiarlo después desde el mismo correo.</p>' +
+    '<div class="form">' + ops + mot +
+    '<button class="btn btn-p ancho" id="gEst" onclick="guardarEstatus()">Guardar estatus</button></div>' +
+    (msg ? '<div class="aviso">' + esc(msg) + '</div>' : '');
+}
+function guardarEstatus() {
+  var m = $('mot') ? $('mot').value : '';
+  if (S.est === 'PERDIDA' && !m) { aviso('Elige el motivo.'); return; }
+  var b = $('gEst'); b.disabled = true; b.textContent = 'Guardando…';
+  llamar('cambiarEstatus', P.folio, S.est, P.t, m).then(function (r) {
+    $('app').innerHTML = '<div class="ok"><p class="nota" style="margin:0 auto">Estatus guardado</p><div class="folio">' + esc(r.folio) + '</div>' +
+      '<p style="margin:0">' + esc(r.cliente) + ', ' + mx(r.total) + '</p><p style="margin-top:10px"><b>' + esc(EST_TXT[r.estatus] || r.estatus) + '</b>' +
+      (m ? ' · ' + esc(m) : '') + '</p><p class="nota" style="margin:14px auto 0">Ya puedes cerrar esta pestaña.</p></div>';
+  }).catch(function (e) { pintarEstatus(e && e.message ? e.message : 'No se pudo guardar.'); });
+}
+
 function iniciar() {
+  if (P.accion === 'ESTATUS') { iniciarEstatus(); return; }
   S.cart = LS.get('kc_cart') || {};
   if (P.cat) { S.cat = P.cat; LS.set('kc_cat', P.cat); } else { S.cat = LS.get('kc_cat') || ''; }
   llamar('getInicial', S.cat).then(function (ini) {
