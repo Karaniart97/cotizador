@@ -76,8 +76,13 @@
   .res button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:0;border-radius:14px;padding:14px;cursor:pointer;box-shadow:0 0 0 1px var(--linea)}
   .res button:hover,.res a.cat-op:hover{box-shadow:0 0 0 2px var(--tq)}
   .res a.cat-op{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:14px;box-shadow:0 0 0 1px var(--linea);color:inherit;text-decoration:none}
-  .res .ini{width:44px;height:44px;border-radius:12px;background:var(--tq-claro);color:var(--tq-hondo);font-family:var(--display);font-weight:800;display:grid;place-items:center;flex:none;font-size:18px;overflow:hidden}
-  .res .ini img{width:100%;height:100%;object-fit:cover}
+  .ini{width:56px;height:56px;border-radius:12px;background:var(--tq-claro);color:var(--tq-hondo);font-family:var(--display);font-weight:800;display:grid;place-items:center;flex:none;font-size:20px;overflow:hidden}
+  .ini img{width:100%;height:100%;object-fit:contain;background:#fff;padding:3px}
+  .ini-s{width:38px;height:38px;border-radius:10px;font-size:15px}
+  .gt{display:flex;align-items:center;gap:10px;min-width:0}
+  .grupo header{align-items:center}
+  .foto-mod{background:#fff;border-radius:18px;box-shadow:0 0 0 1px var(--linea);margin:4px 0 16px;display:grid;place-items:center;padding:12px}
+  .foto-mod img{max-width:100%;max-height:240px;object-fit:contain;display:block}
   .res b{display:block}
   .res small{color:var(--gris)}
 
@@ -337,7 +342,8 @@ function vistaModelo() {
   var m = S.modelo;
   var h = '<h1>' + esc(titulo(m.nombre)) + '</h1>' +
     '<p class="nota">Precio de mayoreo por pieza, sin IVA. Escribe cuántas piezas quieres; se guardan solas en tu carrito.</p>';
-  if (m.img) h += '<img class="hero" src="' + esc(m.img) + '" alt="' + esc(m.nombre) + '">';
+  var fu = fotoUrl(m);
+  if (fu) h += '<div class="foto-mod"><img src="' + esc(fu) + '" alt="' + esc(titulo(m.nombre)) + '" onerror="var t=this;fotoError(t,function(){t.parentNode.remove()})"></div>';
   var idx = {};
   m.skus.forEach(function (s) { idx[s.talla + '|' + s.color] = s; });
 
@@ -378,7 +384,7 @@ function cambiaPiezas(el) {
   var s = S.modelo ? S.modelo.skus.filter(function (x) { return x.clave === k; })[0] : null;
   if (n > 0) {
     var base = S.cart[k] || (s ? { clave: s.clave, desc: s.desc, talla: s.talla, orden: s.orden, color: s.color,
-      precio: s.precio, sem: s.sem, modelo: S.modelo.id, modeloNombre: S.modelo.nombre } : null);
+      precio: s.precio, sem: s.sem, modelo: S.modelo.id, modeloNombre: S.modelo.nombre, foto: S.modelo.foto || '', img: S.modelo.img || '' } : null);
     if (base) { base.cant = n; S.cart[k] = base; }
   } else {
     delete S.cart[k];
@@ -402,8 +408,24 @@ function pintarPieModelo() {
 }
 
 // ---------- elegir (una foto de Canva con varios modelos) ----------
+// ---------- fotos: fotos/<DEPARTAMENTO>/<VARIANTE>.webp en este mismo sitio ----------
+function fotoUrl(m) {
+  if (m && m.img) return m.img;
+  return m && m.foto ? 'fotos/' + String(m.foto).split('/').map(encodeURIComponent).join('/') + '.webp' : '';
+}
+// Si no está el .webp, prueba .png y .jpg (para fotos subidas tal cual); si ninguna existe, quita la foto.
+function fotoError(img, alFinal) {
+  var src = img.getAttribute('src') || '', n = Number(img.dataset.n || 0);
+  if (n === 0 && /\.webp$/.test(src)) { img.dataset.n = 1; img.src = src.replace(/\.webp$/, '.png'); return; }
+  if (n === 1 && /\.png$/.test(src)) { img.dataset.n = 2; img.src = src.replace(/\.png$/, '.jpg'); return; }
+  alFinal();
+}
+function miniatura(m) {
+  var ini = esc(titulo(m.nombre || '').charAt(0)), u = fotoUrl(m);
+  return u ? '<img src="' + esc(u) + '" alt="" loading="lazy" data-i="' + ini + '" onerror="var t=this;fotoError(t,function(){t.parentNode.textContent=t.dataset.i})">' : ini;
+}
 function botonModelo(m) {
-  var ini = m.img ? '<img src="' + esc(m.img) + '" alt="">' : esc(titulo(m.nombre).charAt(0));
+  var ini = miniatura(m);
   return '<button data-m="' + esc(m.id) + '" onclick="abrirModelo(this.dataset.m)"><span class="ini">' + ini + '</span><span><b>' +
     esc(titulo(m.nombre)) + '</b><small>' + esc(titulo(m.tipo)) + (m.captura === 'MATRIZ' ? ', por talla y color' : '') + '</small></span></button>';
 }
@@ -469,7 +491,8 @@ function vistaCarrito() {
   Object.keys(grupos).sort().forEach(function (g) {
     var ls = grupos[g].sort(function (a, b) { return a.color.localeCompare(b.color) || a.orden - b.orden; });
     var mid = ls[0].modelo;
-    h += '<section class="grupo"><header><b>' + esc(titulo(g)) + '</b><button class="enlace" data-m="' + esc(mid) + '" onclick="abrirModelo(this.dataset.m)">Editar</button></header>';
+    var fm = { nombre: g, foto: ls[0].foto, img: ls[0].img };
+    h += '<section class="grupo"><header><span class="gt"><span class="ini ini-s">' + miniatura(fm) + '</span><b>' + esc(titulo(g)) + '</b></span><button class="enlace" data-m="' + esc(mid) + '" onclick="abrirModelo(this.dataset.m)">Editar</button></header>';
     ls.forEach(function (i) {
       h += '<div class="linea"><div class="d"><b>' + esc(i.talla === 'UNI' ? titulo(i.desc) : 'Talla ' + i.talla) + '</b><small>' + sem(i.sem) +
         esc(titulo(i.color)) + ', ' + mx(i.precio) + ' c/u</small></div>' +
